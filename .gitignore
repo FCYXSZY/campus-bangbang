@@ -20,3 +20,6 @@ mvnw.cmd
 # 日志文件
 logs/
 *.log
+
+# 忽略本地开发配置文件
+src/main/resources/application-dev.yml
