@@ -44,6 +44,29 @@ CREATE TABLE `wallet_log` (
                               PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='资金流水表';
 
+
+CREATE TABLE `task_comment` (
+                                `id` bigint(20) NOT NULL AUTO_INCREMENT,
+                                `task_id` bigint(20) NOT NULL COMMENT '关联任务ID',
+                                `user_id` bigint(20) NOT NULL COMMENT '评价人ID(发布者)',
+                                `target_id` bigint(20) NOT NULL COMMENT '被评价人ID(接单者)',
+                                `score` int(1) NOT NULL DEFAULT 5 COMMENT '评分(1-5星)',
+                                `content` varchar(255) DEFAULT NULL COMMENT '评价内容',
+                                `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+                                PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='任务评价表';
+
+
+
+CREATE TABLE `sys_notice` (
+                              `id` bigint(20) NOT NULL AUTO_INCREMENT,
+                              `title` varchar(50) NOT NULL COMMENT '公告标题',
+                              `content` text NOT NULL COMMENT '公告内容',
+                              `admin_id` bigint(20) NOT NULL COMMENT '发布管理员ID',
+                              `is_top` int(1) DEFAULT 0 COMMENT '是否置顶(0否 1是)',
+                              `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+                              PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统公告表';
 -- 插入管理员
 INSERT INTO `sys_user` (`username`, `password`, `nickname`, `role`, `balance`) VALUES ('admin', '123456', '超管', 0, 99999.00);
 -- 插入两个测试学生
