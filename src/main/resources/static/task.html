@@ -2,62 +2,244 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>校园帮帮 - 任务大厅</title>
-    <!-- 引入 Vue 和 ElementUI 样式，不用下载，直接用 CDN -->
+    <title>校园帮帮 - 贴吧模式版</title>
     <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
     <script src="https://unpkg.com/vue@2/dist/vue.js"></script>
     <script src="https://unpkg.com/element-ui/lib/index.js"></script>
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <style>
+        body { background-color: #f5f7fa; font-family: "Helvetica Neue",Helvetica,"PingFang SC",Arial,sans-serif; margin:0; padding:0; }
+        .main-container { padding: 20px; max-width: 1000px; margin: 0 auto; }
+        .header-box { background: #fff; padding: 15px 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; sticky: top; }
+        .school-badge { background: #409EFF; color: #fff; padding: 4px 10px; border-radius: 4px; font-size: 14px; margin-left: 10px; cursor: pointer; }
+
+        /* --- 贴吧列表样式 --- */
+        .tieba-list { background: #fff; border-radius: 4px; min-height: 500px; }
+        .tieba-item { padding: 18px; border-bottom: 1px solid #f0f0f0; display: flex; align-items: flex-start; cursor: pointer; transition: 0.2s; }
+        .tieba-item:hover { background: #fafafa; }
+
+        .tb-avatar { width: 45px; height: 45px; background: #eee; border-radius: 4px; text-align: center; line-height: 45px; color: #999; font-size: 12px; margin-right: 15px; flex-shrink: 0; }
+        .tb-content { flex: 1; }
+        .tb-title { font-size: 16px; font-weight: bold; color: #333; margin-bottom: 8px; display: flex; align-items: center; }
+        .tb-title:hover { color: #409EFF; text-decoration: underline; }
+        .tb-meta { font-size: 13px; color: #999; display: flex; gap: 15px; }
+        .tb-reward { color: #F56C6C; font-weight: bold; font-size: 15px; margin-left: auto; }
+
+        .status-badge { padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-right: 8px; color: #fff; }
+        .bg-wait { background: #67C23A; } /* 待接单 */
+        .bg-run { background: #409EFF; } /* 进行中 */
+        .bg-done { background: #909399; } /* 已完成 */
+
+        /* --- 帖子详情弹窗 --- */
+        .thread-header { border-bottom: 1px solid #eee; padding-bottom: 15px; margin-bottom: 15px; }
+        .thread-title { font-size: 20px; font-weight: bold; margin-bottom: 10px; }
+        .thread-info-row { margin-bottom: 8px; font-size: 14px; color: #666; }
+        .thread-action { background: #f9f9f9; padding: 15px; border-radius: 4px; text-align: center; margin-bottom: 20px; border: 1px dashed #ddd; }
+
+        /* 楼层/评论样式 */
+        .floor-item { display: flex; margin-bottom: 15px; border-bottom: 1px solid #f5f5f5; padding-bottom: 15px; }
+        .floor-user { width: 80px; text-align: center; font-size: 12px; color: #666; margin-right: 15px; }
+        .floor-avatar { width: 40px; height: 40px; background: #f2f2f2; border-radius: 4px; margin: 0 auto 5px; line-height: 40px; }
+        .floor-content { flex: 1; font-size: 14px; line-height: 1.6; color: #333; }
+        .floor-time { font-size: 12px; color: #ccc; margin-top: 5px; text-align: right; }
+
+        /* 其他样式保持之前的 */
+        .msg-item { background: #fff; padding: 15px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        .msg-item:hover { background: #f9f9f9; }
+        .chat-box { height: 350px; overflow-y: auto; background: #f5f7fa; padding: 15px; border-radius: 4px; margin-bottom: 10px; }
+        .msg-row { margin-bottom: 15px; display: flex; flex-direction: column; }
+        .msg-bubble { padding: 10px 15px; border-radius: 8px; max-width: 70%; word-break: break-all; font-size: 14px; }
+        .msg-me { align-items: flex-end; } .msg-me .msg-bubble { background: #95ec69; }
+        .msg-other { align-items: flex-start; } .msg-other .msg-bubble { background: #fff; }
+    </style>
 </head>
-<body style="background-color: #f5f5f5; padding: 20px;">
+<body>
 <div id="app">
-    <!-- 顶部导航 -->
-    <el-card>
-        <div slot="header" style="display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-weight: bold; font-size: 20px;">🚀 校园帮帮 Task Hall</span>
-            <el-button type="primary" @click="dialogVisible = true">发布任务 +</el-button>
+    <!-- 顶部 -->
+    <div class="header-box">
+        <div style="font-size: 22px; font-weight: bold; color: #303133;">
+            <i class="el-icon-school"></i> 校园帮帮
+            <span v-if="currentSchool" class="school-badge" @click="changeSchool">{{ currentSchool.name }} (切换)</span>
         </div>
-    </el-card>
+        <div>
+            <span style="color:#666; margin-right:10px;">身份:</span>
+            <el-radio-group v-model="currentUserId" size="small" @change="handleUserChange">
+                <el-radio-button :label="1">用户1</el-radio-button>
+                <el-radio-button :label="2">用户2</el-radio-button>
+            </el-radio-group>
+            <el-button type="primary" size="small" icon="el-icon-edit" @click="dialogVisible = true" style="margin-left: 10px;">发帖求助</el-button>
+        </div>
+    </div>
 
-    <!-- 任务列表 -->
-    <el-row :gutter="20" style="margin-top: 20px;">
-        <el-col :span="8" v-for="task in taskList" :key="task.id" style="margin-bottom: 20px;">
-            <el-card shadow="hover">
-                <div slot="header">
-                    <span style="font-weight: bold;">{{ task.title }}</span>
-                    <el-tag type="danger" style="float: right;">￥{{ task.reward }}</el-tag>
-                </div>
-                <div style="font-size: 14px; color: #666;">
-                    <p>📍 取件：{{ task.locationFrom }}</p>
-                    <p>🏁 送达：{{ task.locationTo }}</p>
-                    <p>🕒 截止：{{ task.deadline }}</p>
-                    <p>📝 备注：{{ task.description }}</p>
-                </div>
-                <el-button type="success" size="small" style="width: 100%; margin-top: 10px;">立即抢单</el-button>
-            </el-card>
-        </el-col>
-    </el-row>
+    <div class="main-container">
+        <el-tabs v-model="activeTab" type="card" @tab-click="handleTabClick">
 
-    <!-- 发布任务弹窗 -->
-    <el-dialog title="发布新任务" :visible.sync="dialogVisible" width="40%">
+            <!-- Tab 1: 任务大厅 (贴吧模式) -->
+            <el-tab-pane name="hall">
+                <span slot="label"><i class="el-icon-s-order"></i> 任务广场</span>
+
+                <el-alert v-if="!currentSchool" title="请先选择学校" type="warning" show-icon :closable="false"></el-alert>
+
+                <div v-else class="tieba-list">
+                    <!-- 列表项 -->
+                    <div class="tieba-item" v-for="task in taskList" :key="task.id" @click="openThread(task)">
+                        <!-- 头像/楼层数 -->
+                        <div class="tb-avatar" :style="{background: stringToColor(task.publisherId.toString())}">
+                            U{{ task.publisherId }}
+                        </div>
+                        <!-- 内容 -->
+                        <div class="tb-content">
+                            <div class="tb-title">
+                                <span class="status-badge bg-wait" v-if="task.status===0">待接单</span>
+                                <span class="status-badge bg-run" v-else-if="task.status===1">进行中</span>
+                                <span class="status-badge bg-done" v-else>已结束</span>
+                                {{ task.title }}
+                            </div>
+                            <div class="tb-meta">
+                                <span><i class="el-icon-location-outline"></i> 取: {{ task.locationFrom }}</span>
+                                <span><i class="el-icon-location"></i> 送: {{ task.locationTo }}</span>
+                                <span><i class="el-icon-time"></i> {{ formatTime(task.createTime) }}</span>
+                                <span><i class="el-icon-chat-dot-square"></i> 回复 {{ task.consultList ? task.consultList.length : 0 }}</span>
+                            </div>
+                        </div>
+                        <!-- 赏金 -->
+                        <div class="tb-reward">￥{{ task.reward }}</div>
+                    </div>
+
+                    <div v-if="taskList.length===0" style="text-align: center; padding: 40px; color: #999;">
+                        本校暂无帖子，抢个沙发吧~
+                    </div>
+                </div>
+            </el-tab-pane>
+
+            <!-- Tab 2: 食堂 (保持不变) -->
+            <el-tab-pane name="canteen">
+                <span slot="label"><i class="el-icon-food"></i> 食堂美食</span>
+                <el-container style="height: 600px; border: 1px solid #eee; background: #fff;">
+                    <el-aside width="200px" style="border-right: 1px solid #eee;">
+                        <el-menu :default-active="activeCanteenId" @select="handleCanteenSelect">
+                            <el-menu-item v-for="c in canteenList" :key="c.id" :index="c.id.toString()">{{ c.name }}</el-menu-item>
+                        </el-menu>
+                    </el-aside>
+                    <el-main>
+                        <div v-if="windowList.length===0" style="padding:20px; color:#999;">请选择食堂</div>
+                        <div v-for="win in windowList" :key="win.id" style="margin-bottom:15px; border:1px solid #eee; padding:10px;">
+                            <div style="font-weight:bold; color:#E6A23C; margin-bottom:5px;">{{ win.name }} <span style="font-size:12px; color:#999;">{{win.floor}}</span></div>
+                            <div v-for="d in win.dishList" :key="d.id" style="display:flex; justify-content:space-between; font-size:14px; margin-top:5px;">
+                                <span>{{d.name}}</span><span style="color:#F56C6C;">￥{{d.price}}</span>
+                            </div>
+                        </div>
+                    </el-main>
+                </el-container>
+            </el-tab-pane>
+
+            <!-- Tab 3: 消息 (红点修复) -->
+            <el-tab-pane name="msg">
+                    <span slot="label">
+                        <i class="el-icon-message-solid"></i> 消息
+                        <!-- 只有当 unreadCount > 0 时才显示红点 -->
+                        <el-badge :value="unreadCount" class="item" v-if="unreadCount > 0" />
+                    </span>
+                <div v-if="inboxList.length===0" style="text-align: center; padding: 50px; color: #999;">暂无消息</div>
+                <div class="msg-item" v-for="item in inboxList" :key="item.targetId" @click="openChat(item.targetId)">
+                    <div class="tb-avatar" :style="{background: stringToColor(item.targetName)}">{{ item.targetId }}</div>
+                    <div style="flex:1;">
+                        <div style="font-weight:bold;">{{ item.targetName }}</div>
+                        <div style="color:#888; font-size:13px;">{{ item.lastContent }}</div>
+                    </div>
+                </div>
+            </el-tab-pane>
+
+            <!-- Tab 4: 个人中心 -->
+            <el-tab-pane name="profile" label="个人中心">
+                <el-tabs>
+                    <el-tab-pane label="我发布的">
+                        <el-table :data="myPubList"><el-table-column prop="title" label="标题"></el-table-column><el-table-column prop="status" label="状态"></el-table-column></el-table>
+                    </el-tab-pane>
+                    <el-tab-pane label="我抢到的">
+                        <el-table :data="myAccList"><el-table-column prop="title" label="标题"></el-table-column><el-table-column label="操作"><template slot-scope="s"><el-button size="mini" @click="openChat(s.row.publisherId)">联系</el-button></template></el-table-column></el-table>
+                    </el-tab-pane>
+                </el-tabs>
+            </el-tab-pane>
+        </el-tabs>
+    </div>
+
+    <!-- 1. 帖子详情弹窗 (Thread View) -->
+    <el-dialog :visible.sync="threadVisible" width="600px" top="5vh">
+        <div v-if="currentThread">
+            <!-- 楼主信息 -->
+            <div class="thread-header">
+                <div class="thread-title">
+                    <span class="status-badge bg-wait" v-if="currentThread.status===0">待接单</span>
+                    <span class="status-badge bg-run" v-else-if="currentThread.status===1">进行中</span>
+                    <span class="status-badge bg-done" v-else>已结束</span>
+                    {{ currentThread.title }}
+                    <span style="float: right; color: #F56C6C;">赏金 ￥{{ currentThread.reward }}</span>
+                </div>
+                <div class="thread-info-row">📍 取件：{{ currentThread.locationFrom }} --> 送达：{{ currentThread.locationTo }}</div>
+                <div class="thread-info-row">👤 楼主：用户{{ currentThread.publisherId }} | 🕒 发布于 {{ formatTime(currentThread.createTime) }}</div>
+            </div>
+
+            <!-- 抢单操作区 -->
+            <div class="thread-action" v-if="currentThread.status === 0">
+                <div v-if="currentThread.publisherId !== currentUserId">
+                    <div style="margin-bottom: 10px; font-weight: bold; color: #67C23A;">这单还没人接，快抢！</div>
+                    <el-button type="success" icon="el-icon-lightning" @click="acceptTask(currentThread.id)">立即抢单赚赏金</el-button>
+                </div>
+                <div v-else style="color: #999;">这是你自己发布的任务，请等待接单...</div>
+            </div>
+            <div class="thread-action" v-else>
+                <div style="font-weight: bold; color: #909399;">
+                    该任务已被 <span style="color: #409EFF">用户{{ currentThread.acceptorId }}</span> 抢走
+                </div>
+            </div>
+
+            <!-- 评论/回复区 -->
+            <div style="background: #fff;">
+                <el-divider content-position="left">全部回复 ({{ currentThread.consultList ? currentThread.consultList.length : 0 }})</el-divider>
+
+                <!-- 列表 -->
+                <div v-for="c in currentThread.consultList" :key="c.id" class="floor-item">
+                    <div class="floor-user">
+                        <div class="floor-avatar" :style="{background: stringToColor(c.userId.toString())}">U{{c.userId}}</div>
+                        <div>用户{{ c.userId }}</div>
+                    </div>
+                    <div class="floor-content">
+                        {{ c.content }}
+                        <div class="floor-time">{{ formatTime(c.createTime) }}</div>
+                    </div>
+                </div>
+
+                <!-- 输入框 -->
+                <div style="margin-top: 20px; display: flex;">
+                    <el-input type="textarea" :rows="2" placeholder="看帖回帖是美德..." v-model="newComment"></el-input>
+                    <el-button type="primary" style="margin-left: 10px; height: 54px;" @click="submitComment">发表<br>回复</el-button>
+                </div>
+            </div>
+        </div>
+    </el-dialog>
+
+    <!-- 其他弹窗 (发布、选学校、聊天) -->
+    <el-dialog title="发布帖子" :visible.sync="dialogVisible" width="500px">
         <el-form :model="form" label-width="80px">
-            <el-form-item label="标题">
-                <el-input v-model="form.title" placeholder="例如：帮取快递"></el-input>
-            </el-form-item>
-            <el-form-item label="赏金">
-                <el-input v-model="form.reward" placeholder="例如：5.00"></el-input>
-            </el-form-item>
-            <el-form-item label="取件地">
-                <el-input v-model="form.locationFrom" placeholder="例如：东门菜鸟驿站"></el-input>
-            </el-form-item>
-            <el-form-item label="送达地">
-                <el-input v-model="form.locationTo" placeholder="例如：西三宿舍楼"></el-input>
-            </el-form-item>
+            <el-form-item label="标题"><el-input v-model="form.title"></el-input></el-form-item>
+            <el-form-item label="赏金"><el-input v-model="form.reward"></el-input></el-form-item>
+            <el-form-item label="取件"><el-input v-model="form.locationFrom"></el-input></el-form-item>
+            <el-form-item label="送达"><el-input v-model="form.locationTo"></el-input></el-form-item>
         </el-form>
-        <span slot="footer" class="dialog-footer">
-                <el-button @click="dialogVisible = false">取 消</el-button>
-                <el-button type="primary" @click="submitTask">确 定</el-button>
-            </span>
+        <span slot="footer"><el-button type="primary" @click="submitTask">发布</el-button></span>
+    </el-dialog>
+
+    <el-dialog title="选择校区" :visible.sync="schoolDialogVisible" width="400px" :show-close="false">
+        <el-select v-model="tempSchoolId" style="width:100%"><el-option v-for="s in schoolList" :key="s.id" :label="s.name" :value="s.id"></el-option></el-select>
+        <span slot="footer"><el-button type="primary" @click="confirmSchool" :disabled="!tempSchoolId" style="width:100%">进入</el-button></span>
+    </el-dialog>
+
+    <el-dialog :title="'与 用户'+chatTargetId+' 私聊'" :visible.sync="chatVisible" width="500px" @close="handleCloseChat">
+        <div class="chat-box" id="chatBox">
+            <div v-for="m in chatHistory" :key="m.id" :class="['msg-row', m.senderId===currentUserId?'msg-me':'msg-other']"><div class="msg-bubble">{{m.content}}</div></div>
+        </div>
+        <div style="display: flex;"><el-input v-model="chatInput"></el-input><el-button @click="sendMsg">发送</el-button></div>
     </el-dialog>
 </div>
 
@@ -65,40 +247,96 @@
     new Vue({
         el: '#app',
         data: {
-            dialogVisible: false,
-            taskList: [],
-            form: {
-                publisherId: 1, // 暂时写死，假装是 ID为1 的用户发的
-                title: '',
-                reward: '',
-                locationFrom: '',
-                locationTo: ''
-            }
+            currentUserId: 1, activeTab: 'hall',
+            schoolList: [], currentSchool: null, tempSchoolId: null, schoolDialogVisible: true,
+            taskList: [], inboxList: [], unreadCount: 0, // 新增红点计数
+            threadVisible: false, currentThread: null, newComment: '', // 帖子详情相关
+            canteenList: [], windowList: [], activeCanteenId: null,
+            myPubList: [], myAccList: [],
+            dialogVisible: false, chatVisible: false, chatTargetId: null, chatInput: '', chatHistory: [], chatTimer: null,
+            form: { title: '', reward: '', locationFrom: '', locationTo: '' }
         },
-        created() {
-            this.loadTasks();
-        },
+        created() { this.loadSchools(); },
         methods: {
-            // 加载任务列表
-            loadTasks() {
-                axios.get('/task/list').then(res => {
-                    if (res.data.code === 200) {
-                        this.taskList = res.data.data.records;
+            // --- 基础 ---
+            loadSchools() { axios.get('/school/list').then(res => this.schoolList = res.data.data); },
+            confirmSchool() { this.currentSchool = this.schoolList.find(s => s.id === this.tempSchoolId); this.schoolDialogVisible = false; this.loadHall(); this.loadCanteens(); },
+            changeSchool() { this.schoolDialogVisible = true; },
+            handleUserChange() { this.$message.info(`切为用户 ${this.currentUserId}`); this.refreshAll(); },
+            handleTabClick(tab) {
+                if (tab.name === 'msg') {
+                    this.loadInbox();
+                    this.unreadCount = 0; // 点击消息Tab，红点清零！
+                } else if (tab.name === 'hall') this.loadHall();
+                else if (tab.name === 'profile') { this.loadMyPub(); this.loadMyAcc(); }
+            },
+            refreshAll() { this.loadHall(); this.loadInbox(); },
+
+            // --- 贴吧/任务大厅 ---
+            loadHall() {
+                if(!this.currentSchool) return;
+                axios.get(`/task/list?schoolId=${this.currentSchool.id}`).then(async res => {
+                    let list = res.data.data.records;
+                    // 预加载评论数
+                    for (let task of list) {
+                        let cRes = await axios.get('/consult/list?taskId=' + task.id);
+                        task.consultList = cRes.data.data;
+                    }
+                    this.taskList = list;
+                });
+            },
+            openThread(task) {
+                this.currentThread = task;
+                this.threadVisible = true;
+            },
+            submitComment() {
+                if(!this.newComment) return;
+                axios.post('/consult/add', { taskId: this.currentThread.id, userId: this.currentUserId, username: '用户'+this.currentUserId, content: this.newComment })
+                    .then(() => {
+                        this.$message.success('回复成功'); this.newComment = '';
+                        // 刷新当前帖子的评论
+                        axios.get('/consult/list?taskId=' + this.currentThread.id).then(r => {
+                            this.currentThread.consultList = r.data.data;
+                        });
+                    });
+            },
+            acceptTask(taskId) {
+                axios.post('/task/accept', { taskId, userId: this.currentUserId }).then(() => {
+                    this.$message.success('抢单成功');
+                    this.threadVisible = false; // 关闭弹窗
+                    this.loadHall(); // 刷新列表
+                });
+            },
+            submitTask() {
+                let task = { ...this.form, publisherId: this.currentUserId, schoolId: this.currentSchool.id };
+                axios.post('/task/publish', task).then(() => { this.$message.success('发帖成功'); this.dialogVisible = false; this.loadHall(); });
+            },
+
+            // --- 消息 (红点逻辑) ---
+            loadInbox() {
+                axios.get('/message/inbox?userId=' + this.currentUserId).then(res => {
+                    this.inboxList = res.data.data;
+                    // 简单模拟：如果有列表，就显示红点（实际应该根据isRead字段，这里简化处理）
+                    // 只有当不在消息Tab时，才更新红点
+                    if (this.activeTab !== 'msg') {
+                        this.unreadCount = this.inboxList.length;
                     }
                 });
             },
-            // 提交任务
-            submitTask() {
-                axios.post('/task/publish', this.form).then(res => {
-                    if (res.data.code === 200) {
-                        this.$message.success('发布成功！');
-                        this.dialogVisible = false;
-                        this.loadTasks(); // 刷新列表
-                    } else {
-                        this.$message.error(res.data.msg);
-                    }
-                });
-            }
+
+            // --- 其他 (食堂、私聊、个人) 逻辑保持简化，代码复用之前的 ---
+            loadCanteens() { if(this.currentSchool) axios.get(`/school/canteen/list?schoolId=${this.currentSchool.id}`).then(res => this.canteenList = res.data.data); },
+            handleCanteenSelect(id) { axios.get(`/school/window/list?canteenId=${id}`).then(res => this.windowList = res.data.data); },
+            loadMyPub() { axios.get('/task/my-publish?userId=' + this.currentUserId).then(res => this.myPubList = res.data.data); },
+            loadMyAcc() { axios.get('/task/my-accept?userId=' + this.currentUserId).then(res => this.myAccList = res.data.data); },
+            openChat(uid) { if(uid===this.currentUserId) return; this.chatTargetId=uid; this.chatVisible=true; this.loadHistory(); this.chatTimer=setInterval(this.loadHistory,2000); },
+            handleCloseChat() { clearInterval(this.chatTimer); },
+            loadHistory() { if(this.chatVisible) axios.get(`/message/history?userId1=${this.currentUserId}&userId2=${this.chatTargetId}`).then(r=>{this.chatHistory=r.data.data; this.$nextTick(()=>{let b=document.getElementById('chatBox');if(b)b.scrollTop=b.scrollHeight})}); },
+            sendMsg() { if(this.chatInput) axios.post('/message/send',{senderId:this.currentUserId,receiverId:this.chatTargetId,content:this.chatInput}).then(()=>{this.chatInput='';this.loadHistory()}); },
+
+            // 工具
+            stringToColor(str) { return ['#E0E0E0','#FFCCBC','#B3E5FC'][str%3]; }, // 简化颜色
+            formatTime(t) { return t ? t.substring(5,16) : ''; }
         }
     })
 </script>

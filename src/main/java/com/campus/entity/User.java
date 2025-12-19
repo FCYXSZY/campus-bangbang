@@ -19,4 +19,6 @@ public class User {
     private BigDecimal balance; // 余额
     private Integer role; // 0:管理员 1:普通用户
     private Date createTime;
+
+    private String avatar;
 }

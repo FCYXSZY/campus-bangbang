@@ -1,6 +1,7 @@
 package com.campus.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -13,6 +14,8 @@ import java.util.Date;
 public class Task {
     @TableId(type = IdType.AUTO)
     private Long id;
+
+    private Long schoolId;
 
     private Long publisherId; // 发布者ID
     private Long acceptorId;  // 接单者ID
@@ -32,4 +35,12 @@ public class Task {
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     private Date createTime;
+
+    // 【新增】发布者头像 (数据库里没这个字段，这是临时拼装用的)
+    @TableField(exist = false)
+    private String publisherAvatar;
+
+    // 【新增】发布者昵称 (顺便把昵称也带上，别老显示用户ID了)
+    @TableField(exist = false)
+    private String publisherName;
 }

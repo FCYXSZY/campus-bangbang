@@ -1,6 +1,106 @@
+<!DOCTYPE html>
 <html>
-<body>
-<h1>hello word!!!</h1>
-<p>this is a html page</p>
+<head>
+    <meta charset="UTF-8">
+    <title>校园帮帮 - 任务大厅</title>
+    <!-- 引入 Vue 和 ElementUI 样式，不用下载，直接用 CDN -->
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <script src="https://unpkg.com/vue@2/dist/vue.js"></script>
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+</head>
+<body style="background-color: #f5f5f5; padding: 20px;">
+<div id="app">
+    <!-- 顶部导航 -->
+    <el-card>
+        <div slot="header" style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: bold; font-size: 20px;">🚀 校园帮帮 Task Hall</span>
+            <el-button type="primary" @click="dialogVisible = true">发布任务 +</el-button>
+        </div>
+    </el-card>
+
+    <!-- 任务列表 -->
+    <el-row :gutter="20" style="margin-top: 20px;">
+        <el-col :span="8" v-for="task in taskList" :key="task.id" style="margin-bottom: 20px;">
+            <el-card shadow="hover">
+                <div slot="header">
+                    <span style="font-weight: bold;">{{ task.title }}</span>
+                    <el-tag type="danger" style="float: right;">￥{{ task.reward }}</el-tag>
+                </div>
+                <div style="font-size: 14px; color: #666;">
+                    <p>📍 取件：{{ task.locationFrom }}</p>
+                    <p>🏁 送达：{{ task.locationTo }}</p>
+                    <p>🕒 截止：{{ task.deadline }}</p>
+                    <p>📝 备注：{{ task.description }}</p>
+                </div>
+                <el-button type="success" size="small" style="width: 100%; margin-top: 10px;">立即抢单</el-button>
+            </el-card>
+        </el-col>
+    </el-row>
+
+    <!-- 发布任务弹窗 -->
+    <el-dialog title="发布新任务" :visible.sync="dialogVisible" width="40%">
+        <el-form :model="form" label-width="80px">
+            <el-form-item label="标题">
+                <el-input v-model="form.title" placeholder="例如：帮取快递"></el-input>
+            </el-form-item>
+            <el-form-item label="赏金">
+                <el-input v-model="form.reward" placeholder="例如：5.00"></el-input>
+            </el-form-item>
+            <el-form-item label="取件地">
+                <el-input v-model="form.locationFrom" placeholder="例如：东门菜鸟驿站"></el-input>
+            </el-form-item>
+            <el-form-item label="送达地">
+                <el-input v-model="form.locationTo" placeholder="例如：西三宿舍楼"></el-input>
+            </el-form-item>
+        </el-form>
+        <span slot="footer" class="dialog-footer">
+                <el-button @click="dialogVisible = false">取 消</el-button>
+                <el-button type="primary" @click="submitTask">确 定</el-button>
+            </span>
+    </el-dialog>
+</div>
+
+<script>
+    new Vue({
+        el: '#app',
+        data: {
+            dialogVisible: false,
+            taskList: [],
+            form: {
+                publisherId: 1, // 暂时写死，假装是 ID为1 的用户发的
+                title: '',
+                reward: '',
+                locationFrom: '',
+                locationTo: ''
+            }
+        },
+        created() {
+            this.loadTasks();
+        },
+        methods: {
+            // 加载任务列表
+            loadTasks() {
+                axios.get('/task/list').then(res => {
+                    if (res.data.code === 200) {
+                        this.taskList = res.data.data.records;
+                    }
+                });
+            },
+            // 提交任务
+            submitTask() {
+                axios.post('/task/publish', this.form).then(res => {
+                    if (res.data.code === 200) {
+                        this.$message.success('发布成功！');
+                        this.dialogVisible = false;
+                        this.loadTasks(); // 刷新列表
+                    } else {
+                        this.$message.error(res.data.msg);
+                    }
+                });
+            }
+        }
+    })
+</script>
 </body>
 </html>
